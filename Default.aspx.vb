@@ -71,7 +71,42 @@ Public Class _Default
                     cmd.Parameters.AddWithValue("@BirthDate", empObj.BirthDate)
                     cmd.Parameters.AddWithValue("@JoinDate", empObj.JoinDate)
                     cmd.Parameters.AddWithValue("@Designation", empObj.Designation)
-                    cmd.Parameters.AddWithValue("@CompanyName", empObj.CompanyName)
+                    cmd.Parameters.AddWithValue("@companyid", empObj.companyid)
+                    'cmd.Parameters.AddWithValue("@CompanyName", empObj.CompanyName)
+                    cmd.ExecuteNonQuery()
+                End Using
+
+                result = "success"
+            End Using
+        Catch ex As Exception
+            ' Handle exceptions
+            result = ex.Message
+        End Try
+
+        Return result
+    End Function
+
+    <WebMethod>
+    <ScriptMethod(ResponseFormat:=ResponseFormat.Json)>
+    Public Shared Function UpdateComanyRecord(ByVal comObj As Company) As String
+        'Public Shared Function UpdateInsertRecord(FirstName As String, LastName As String, BirthDate As String, JoinDate As String, Designation As String) As String
+        Dim connectionString As String = ConfigurationManager.ConnectionStrings("CrudDatabase").ConnectionString
+        Dim result As String = ""
+        Try
+            Using connection As New SqlConnection(connectionString)
+                connection.Open()
+                'Dim parsedBirthDate As DateTime
+                'Dim parsedJoinDate As DateTime
+
+
+                ' Insert into database using stored procedure
+                Using cmd As New SqlCommand("EditCompany", connection)
+                    cmd.CommandType = CommandType.StoredProcedure
+                    cmd.Parameters.AddWithValue("@companyid", comObj.companyid)
+                    cmd.Parameters.AddWithValue("@CompanyName", comObj.CompanyName)
+                    cmd.Parameters.AddWithValue("@address", comObj.address)
+                    cmd.Parameters.AddWithValue("@CompanyType", comObj.companyType)
+                    'cmd.Parameters.AddWithValue("@CompanyName", empObj.CompanyName)
                     cmd.ExecuteNonQuery()
                 End Using
 
@@ -344,10 +379,74 @@ Public Class _Default
         'Return result
     End Function
 
+    <WebMethod>
+    Public Shared Function DeleteCompany(ByVal companyid As Integer) As String
+        Dim x As String = ""
+        Dim connectionString As String = ConfigurationManager.ConnectionStrings("CrudDatabase").ConnectionString
+        Dim connection As SqlConnection =
+            New SqlConnection(connectionString)
+        connection.Open()
+        Try
+            Dim command As SqlCommand =
+                New SqlCommand("DeleteCompany", connection)
+            command.CommandType = CommandType.StoredProcedure
+
+            command.Parameters.Add("@companyid", companyid)
+            x = "success"
+
+            command.ExecuteNonQuery()
+            'FetchEmployeeData()
+        Catch ex As Exception
+            Console.WriteLine(ex.Message)
+            Throw
+        Finally
+            connection.Close()
+        End Try
+        Return x
+
+
+        ''Dim connectionString As String = connectionString
+        'Dim connectionString As String = ConfigurationManager.ConnectionStrings("CrudDatabase").ConnectionString
+        'Dim result As String = ""
+        'Try
+        '    Using connection As New SqlConnection(connectionString)
+        '        Using command As New SqlCommand("DeleteEmployee", connection)
+        '            connection.Open()
+        '            command.CommandType = CommandType.StoredProcedure
+        '            command.Parameters.AddWithValue("@UniqueId", id) ' Assuming your stored procedure parameter is named @ID
+        '            command.Connection = connection
+        '            command.ExecuteNonQuery()
+        '            result = "Record deleted successfully."
+        '            Dim page As _Default = TryCast(HttpContext.Current.Handler, _Default)
+        '            If page IsNot Nothing Then
+        '                Dim employeeData As DataTable = page.FetchEmployeeData()
+
+        '                ' Check if data is retrieved successfully
+        '                If employeeData IsNot Nothing AndAlso employeeData.Rows.Count > 0 Then
+        '                    ' Bind the retrieved data to the GridView control
+
+        '                    gv.DataSource = employeeData
+        '                    gv.DataBind()
+        '                End If
+        '            End If
+
+        '        End Using
+        '    End Using
+        'Catch ex As Exception
+        '    result = "Error deleting record: " & ex.Message
+        'End Try
+
+        '' Execute your delete stored procedure here using id
+
+        'Return result
+    End Function
+
+
+
     <WebMethod()>
     Public Shared Function FetcCompanyData() As String
         Dim connectionString As String = ConfigurationManager.ConnectionStrings("CrudDatabase").ConnectionString
-        Dim query As String = "SELECT CompanyName, address,companyType FROM CompanyTable;"
+        Dim query As String = "SELECT companyid,CompanyName, address,companyType FROM CompanyTable;"
 
         Dim employeeData As New DataTable()
 
@@ -422,11 +521,22 @@ Public Class _Default
     Public Shared Function GetByID(ByVal UniqueId As Integer) As String
         Dim connectionString As String = ConfigurationManager.ConnectionStrings("CrudDatabase").ConnectionString
         Dim connection As SqlConnection = New SqlConnection(connectionString)
-        Dim result As New Employee ' Change YourRecordType to match your record structure
+        Dim employeeData As New DataTable()
+        'Dim result As New Employee ' Change YourRecordType to match your record structure
+        Dim result = New With {
+                        .UniqueId = 0,
+                       .FirstName = "",
+                       .LastName = "",
+                       .BirthDate = DateTime.MinValue,
+                      .JoinDate = DateTime.MinValue,
+                      .Designation = "",
+                      .companyid = "",
+                       .CompanyName = ""
+                       }
         'Dim employeeData As New DataTable()
         Try
             connection.Open()
-            Dim query As String = "SELECT e.UniqueId, e.FirstName, e.LastName, e.BirthDate, e.JoinDate, e.Designation, c.CompanyName
+            Dim query As String = "SELECT e.UniqueId, e.FirstName, e.LastName, e.BirthDate, e.JoinDate, e.Designation, c.CompanyName,c.companyid
                  FROM Employee e
                LEFT JOIN RelationalTable ec ON e.UniqueId = ec.empid
                Left Join CompanyTable c ON ec.CompanyID = c.companyid
@@ -437,8 +547,11 @@ Public Class _Default
             Dim command As SqlCommand = New SqlCommand(query, connection)
             command.Parameters.AddWithValue("@UniqueId", UniqueId) ' Set the value of @UniqueId
 
+
+
+
             Dim reader As SqlDataReader = command.ExecuteReader()
-            'employeeData.Load(reader)
+            employeeData.Load(reader)
 
             If reader.Read() Then
                 ' Map the data from the reader to your record object
@@ -448,6 +561,7 @@ Public Class _Default
                 result.BirthDate = reader("BirthDate")
                 result.JoinDate = reader("JoinDate")
                 result.Designation = reader("Designation").ToString()
+                result.companyid = reader("companyid").ToString()
                 result.CompanyName = reader("CompanyName").ToString()
             End If
 
@@ -461,7 +575,66 @@ Public Class _Default
         End Try
 
         ' Serialize the result object to JSON and return
-        Return JsonConvert.SerializeObject(result)
+        'Return JsonConvert.SerializeObject(Result)
+        Dim jsonResult As String = JsonConvert.SerializeObject(result)
+        Return jsonResult
+
+    End Function
+
+    <WebMethod()>
+    Public Shared Function GetByIDCompany(ByVal companyid As Integer) As String
+        Dim connectionString As String = ConfigurationManager.ConnectionStrings("CrudDatabase").ConnectionString
+        Dim connection As SqlConnection = New SqlConnection(connectionString)
+        Dim employeeData As New DataTable()
+        'Dim result As New Employee ' Change YourRecordType to match your record structure
+        Dim result = New With {
+                        .companyid = 0,
+                       .CompanyName = "",
+                       .address = "",
+                       .CompanyType = ""
+                       }
+        'Dim employeeData As New DataTable()
+        Try
+            connection.Open()
+            Dim query As String = "SELECT companyid, CompanyName,address, CompanyType
+                 FROM CompanyTable 
+              
+               WHERE companyid = @companyid;"
+
+
+
+            Dim command As SqlCommand = New SqlCommand(query, connection)
+            command.Parameters.AddWithValue("@companyid", companyid) ' Set the value of @UniqueId
+
+
+
+
+            Dim reader As SqlDataReader = command.ExecuteReader()
+            'employeeData.Load(reader)
+
+            If reader.Read() Then
+                ' Map the data from the reader to your record object
+                result.companyid = Convert.ToInt32(reader("companyid"))
+                result.CompanyName = reader("CompanyName").ToString()
+                result.address = reader("address").ToString()
+                result.CompanyType = reader("CompanyType")
+                
+            End If
+
+            reader.Close()
+        Catch ex As Exception
+            Console.WriteLine(ex.Message)
+            ' Handle exceptions as needed
+            ' You may want to return an error message
+        Finally
+            connection.Close()
+        End Try
+
+        ' Serialize the result object to JSON and return
+        'Return JsonConvert.SerializeObject(Result)
+        Dim jsonResult As String = JsonConvert.SerializeObject(result)
+        Return jsonResult
+
     End Function
 
 
@@ -502,5 +675,6 @@ Public Class _Default
 
         Return result
     End Function
+
 
 End Class
