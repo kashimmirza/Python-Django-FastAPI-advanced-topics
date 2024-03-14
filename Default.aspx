@@ -44,23 +44,48 @@
         let DeletedPage = 0;
         let dataType = 'Employee'; 
         var recordsOnCurrentPage = 0;
+        var uniqueidComp;
+        var selectedCompanyType;
         
         
         $(document).ready(function () {
             pageSize = $('#selectPage').val();
             <%--currentPage = parseInt($('#<%= currentPageHidden.ClientID %>').val());--%>
             pageSize = parseInt(pageSize);
-            var companyTypes = ['Private', 'Semi Government', 'Government'];
+            var companyTypes = ['Private','private','Software', 'Semi Government', 'Government'];
             var ddlCompanyType = $('#companyType');
             ddlCompanyType.empty();
             ddlCompanyType.append($('<option value="">Select Company Type</option>'));
-           
 
-            // Add company types to dropdown list
+            ////companyTypes.forEach(function (type, index) {
+            ////    // Append an option element for each value
+            ////    ddlCompanyType.append($('<option></option>').attr('value', index).text(type));
+            ////});
+
+            //// Add company types to dropdown list
             $.each(companyTypes, function (index, type) {
                 ddlCompanyType.append($('<option></option>').val(type).text(type));
             });
 
+            //var ddlCompanyType = document.getElementById("companyType");
+
+            //// Get the selected value
+            //var selectedValue = ddlCompanyType.value;
+            // Get the selected value
+           /* var selectedValue = $('#companyType').val();*/
+
+            //companyTypes.each(function () {
+            //    //if its a select 
+            //    if ($(this).is("companyType")) {
+            //        //find its selected index using native DOM and do something with it
+            //        $(this)[0].selectedIndex;
+            //    }
+            //});
+            
+            //$.each(companyList, function (index, companyName) {
+            //    ddlCompanyType.append($('<option></option>').val(index).html(companyTypes.[index]));
+            //    console.log(typeof companyTypes[index]);
+            //});
             var companyList = [];
 
             fetchCompanyNames();
@@ -427,8 +452,9 @@
                     
                     console.log('company', comObj);
                     fetchCompanyNames();
+                   /* displayEmployeeData(companyData)*/
 
-            clearTextBox();
+                    clearTextBoxComp();
             $('#myCompany').modal('hide');
         },
         error: function (errormessage) {
@@ -491,11 +517,56 @@
                     $('#BirthDate').val(birthDate);
                     $('#JoinDate').val(joinDate);
                     $('#Designation').val(response.Designation);
-                    $('#companyNameListdropdown').val(response.CompanyName);
+                    $('#companyNameListdropdown').val(response.companyid)
+                    /*$('#companyNameListdropdown').text(response.CompanyName);*/
+                   /* $('#companyNameListdropdown').val(response.companyid).text(response.CompanyName);*/
 
                     $('#myModal').modal('show');
                     $('#btnUpdate').show();
                     $('#btnAdd').hide();
+                },
+                error: function (errormessage) {
+                    alert(errormessage.responseText);
+                }
+            });
+            return false;
+        }
+       
+
+        function getByIDCompany(companyid) {
+            /*uniqueidCompany = uniqueid*/
+            uniqueidComp = companyid;
+            $('#companyName').css('border-color', 'lightgrey');
+            $('#address').css('border-color', 'lightgrey');
+            $('#companyType').css('border-color', 'lightgrey');
+            
+           /* console.log("UniqueId", uniqueidCompany)*/
+            $.ajax({
+              
+                url: "Default.aspx/GetByIDCompany",
+                type: "POST",
+                data: JSON.stringify({ companyid: companyid }),
+                contentType: "application/json;charset=UTF-8",
+                dataType: "json",
+                success: function (result) {
+                    console.log("Result from server = ", result.d)
+                    var response = JSON.parse(result.d);
+                    console.log('response of updatebyid', response)
+                    
+                    $('#CompanyName').val(response.CompanyName);
+                    $('#address').val(response.address);
+                    $('#companyType').val(response.CompanyType);
+                    selectedCompanyType = response.CompanyType;
+                    /*$('#companyTyp').val(response.CompanyType);*/
+                    
+
+                   
+                    /*$('#companyNameListdropdown').text(response.CompanyName);*/
+                    /* $('#companyNameListdropdown').val(response.companyid).text(response.CompanyName);*/
+
+                    $('#myCompany').modal('show');
+                    $('#btnUpdateCompany').show();
+                    $('#btnAddCompany').hide();
                 },
                 error: function (errormessage) {
                     alert(errormessage.responseText);
@@ -521,7 +592,7 @@
                 BirthDate: $('#BirthDate').val(),
                 JoinDate: $('#JoinDate').val(),
                 Designation: $('#Designation').val(),
-                CompanyName: $('#companyNameListdropdown').val()
+                Companyid: $('#companyNameListdropdown').val()
             };
             $.ajax({
                 url: "Default.aspx/UpdateInsertRecord",
@@ -537,6 +608,46 @@
                     //loadDate()
                     
                     $('#myModal').modal('hide');
+                },
+                error: function (errormessage) {
+                    alert(errormessage.responseText);
+                }
+            });
+        }
+
+
+        function UpdateCompany() {
+            //var res = validate();
+            //if (res == false) {
+            //    return false;
+            //}
+            /* $('#myModalLabel').attir('Edit Employee')*/
+
+            /* modalTitle.textContent = "Edit Employee";*/
+            console.log("hi update")
+            var companyObj = {
+                companyid: uniqueidComp,
+                CompanyName: $('#CompanyName').val(),
+                address: $('#address').val(),
+                CompanyType: $('#companyType').val(selectedCompanyType)
+               
+                
+                
+            };
+            $.ajax({
+                url: "Default.aspx/UpdateComanyRecord",
+
+                data: JSON.stringify({ companyObj: companyObj }),
+                type: "POST",
+                contentType: "application/json;charset=utf-8",
+                dataType: "json",
+                success: function (result) {
+                    //loadData(unii);
+                    showComanyList();
+                    alert("record has been updated successfully")
+                    //loadDate()
+
+                    $('#mycompany').modal('hide');
                 },
                 error: function (errormessage) {
                     alert(errormessage.responseText);
@@ -587,19 +698,80 @@
             }
         }
 
+        function DeleteCompany(uniqueidComp) {
+            var ans = confirm("Are you sure you want to delete this Record?");
+            // loadData();
+            if (ans) {
+                $.ajax({
+
+                    url: "Default.aspx/DeleteCompany",
+                    type: "POST",
+                    contentType: "application/json;charset=UTF-8",
+                    dataType: "json",
+                    data: JSON.stringify({ companyid: uniqueidComp }),
+                    success: function (result) {
+                      /*  DeletedPage = DeletedPage + 1;*/
+                        //AddActivePage();
+                        //countingTotalRecordsAndGeneratePagination()
+                        //loadData()
+                        //recordsOnCurrentPage = 
+
+                        //if (DeletedPage === pageSize && currentPage > 1) {
+                        //    currentPage = currentPage - 1;
+                        //}
+
+                        showComanyList()
+                        //recordsOnCurrentPage--;
+
+                        //if (recordsOnCurrentPage === 0) {
+                        //    currentPage = currentPage - 1;
+                        //    loadData();
+                        //}
+                        //countingTotalRecordsAndGeneratePagination()
+                        //generatePaginationButtons()
+
+                        //totalcount
+
+                    },
+                    error: function (errormessage) {
+                        alert(errormessage.responseText);
+                    }
+                });
+            }
+        }
+
         function displayEmployeeData(companyData) {
             var companyData = JSON.parse(companyData);
             console.log('companydata', companyData)
             
+           /* tableBody += '<td><a href="#" onclick="return getbyID(' + item.UniqueId + ')">Edit</a> | <a href="#" onclick="Delete(' + item.UniqueId + ')">Delete</a></td>';*/
+            /*var table = "<thead><tr><th>CompanyName</th><th>CompanyType</th><th>companyaddress</th></tr></thead><tbody>";*/
+            var table = "<thead><tr><th>CompanyName</th><th>CompanyType</th><th>companyaddress</th><th>Actions</th></tr></thead><tbody>";
 
-            var table = "<thead><tr><th>CompanyName</th><th>CompanyType</th><th>companyaddress</th></tr></thead><tbody>";
-            //var table = ''
             $.each(companyData, function (index, company) {
-                table += "<tr><td>" + company.CompanyName + "</td><td>" + company.companyType + "</td><td>" + company.address + "</td></tr>";
+                console.log('companyid', company.companyid)
+                table += '<tr>';
+                table += '<td>' + company.CompanyName + '</td>';
+                table += '<td>' + company.companyType + '</td>';
+                table += '<td>' + company.address + '</td>';
+                table += '<td><a href="#" onclick="return getByIDCompany(' + company.companyid + ')">Edit</a> | <a href="#" onclick="DeleteCompany(' + company.companyid + ')">Delete</a></td>';
+                table += '</tr>';
             });
-            //table += "</tbody>";
-            console.log('company',table)
-            //console.log(tableHtml1)
+
+            table += "</tbody>";
+
+            //// Append the table to your HTML element
+            //$('#yourTableID').html(table);
+
+            ////var table = ''
+            //$.each(companyData, function (index, company) {
+            //    /*table += "<tr><td>" + company.CompanyName + "</td><td>" + company.companyType + "</td><td>" + company.address + "</td></tr>";*/
+            //    table += '<tr><td>' + company.CompanyName + '</td><td> '+ company.companyType + '</td><td>' + company.address + '</td></tr>';
+
+            //});
+            ////table += "</tbody>";
+            //console.log('company',table)
+            ////console.log(tableHtml1)
 
             // Display the table on the webpage
             $("#companyTable").html(table);
@@ -663,6 +835,18 @@
             $('#JoinDate').css('border-color', 'lightgrey');
             $('#Designation').css('border-color', 'lightgrey');
         }
+
+        function clearTextBoxComp() {
+            
+            $('#CompanyName').val("");
+            $('#address').val("");
+            $('#companyTyp').val("");
+            $('#CompanyName').css('border-color', 'lightgrey');
+            $('#address').css('border-color', 'lightgrey');
+            $('#companyType').css('border-color', 'lightgrey');
+            
+        }
+    
     </script>
    
 
@@ -802,7 +986,8 @@
                     <div class="form-group">
                         <label for="companyType">companyType</label>
                         <select class="form-control" id="companyType">
-                        <option value="">Select Company Type</option>
+                          
+                            <option value="">please select type</option>
                          </select>
                         <%--<input type="text" class="form-control" id="companyType" placeholder="Company Type" />--%>
                     </div>
